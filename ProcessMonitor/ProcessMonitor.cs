@@ -81,18 +81,18 @@ namespace ProcessMonitor
         /// Kill a process, if running. Output log to console.
         /// </summary>
         /// <param name="processName"></param>
-        public static void killProcess(String processName)
+        public static void killProcess(String processName, bool showLog = true)
         {
             LinkedList<string> killList = new LinkedList<string>();
             killList.AddFirst(processName);
-            killall(killList);
+            killall(killList, showLog);
         }
 
         /// <summary>
         /// Kill a process by specified PID, if running. Output log to console.
         /// </summary>
         /// <param name="pid">Process PID to kill.</param>
-        public static void killProcess(int pid)
+        public static void killProcess(int pid, bool showLog = true)
         {
             //1. Check that process w/ pid exists
             Process proc = null;
@@ -102,7 +102,7 @@ namespace ProcessMonitor
             }
             catch (Exception e)
             {
-                Console.WriteLine("No process with pid " + pid.ToString() + " found.");
+                if (showLog) Console.WriteLine("No process with pid " + pid.ToString() + " found.");
                 return;
             }
             //2. Kill
@@ -110,11 +110,11 @@ namespace ProcessMonitor
             try
             {
                 proc.Kill();
-                Console.WriteLine("Terminated process successfully.");
+                if (showLog) Console.WriteLine("Terminated process successfully.");
             }
             catch (Exception e)
             {
-                Console.WriteLine("FAILURE:" + Environment.NewLine + "\t" + e.Message.ToString());
+                if (showLog) Console.WriteLine("FAILURE:" + Environment.NewLine + "\t" + e.Message.ToString());
             }
         }
 
@@ -122,7 +122,7 @@ namespace ProcessMonitor
         /// Kill all running processes on a kill list. Output log to console.
         /// </summary>
         /// <param name="killList">Linked List of process names on the kill list.</param>
-        public static void killall(LinkedList<string> killList)
+        public static void killall(LinkedList<string> killList, bool showLog = true)
         {
             bool exists = false;
             short numTerminated = 0;
@@ -134,11 +134,14 @@ namespace ProcessMonitor
                     Process[] proc = Process.GetProcessesByName(killListElement.Value);
                     if (proc.Length > 0)
                     {
-                        if (!exists)
+                        if (showLog)
                         {
-                            Console.WriteLine("Terminating...");
+                            if (!exists)
+                            {
+                                Console.WriteLine("Terminating...");
+                            }
+                            Console.WriteLine("   " + killListElement.Value + " (" + proc.Length.ToString() + ")");
                         }
-                        Console.WriteLine("   " + killListElement.Value + " (" + proc.Length.ToString() + ")");
                         foreach (Process p in proc)
                         {
                             p.Kill();
@@ -151,10 +154,13 @@ namespace ProcessMonitor
             }
             catch (Exception e)
             {
-                Console.WriteLine("FAILURE:" + Environment.NewLine + "\t" + e.Message.ToString());
+                if (showLog) Console.WriteLine("FAILURE:" + Environment.NewLine + "\t" + e.Message.ToString());
             }
-            if (exists) Console.WriteLine("Terminated " + numTerminated.ToString() + " process(es) successfully.");
-            else Console.WriteLine("Nothing to kill: no processes specified were running.");
+            if (showLog)
+            {
+                if (exists) Console.WriteLine("Terminated " + numTerminated.ToString() + " process(es) successfully.");
+                else Console.WriteLine("Nothing to kill: no processes specified were running.");
+            }
         }
 
 

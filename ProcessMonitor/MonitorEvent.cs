@@ -109,7 +109,7 @@ namespace ProcessMonitor
         /// <param name="created">DateTime marking the creation of this MonitorEvent (usually DateTime.Now)</param>
         /// <param name="repetitions">Number of times to call eventFunction (infinity by default).</param>
         /// <param name="outputToConsole">If true, outputs a descriptive message to console every time before eventFunction is called.</param>
-        /// <param name="startImmediately">If true, starts the MonitorEvent immediately. If false, must start it manually with start().</param>
+        /// <param name="startImmediately">If true, starts the MonitorEvent immediately (if repetitions > 0). If false, must start it manually with start().</param>
         public MonitorEvent(string name, TimerCallback eventFunction, object eventFunctionParam, long dueTime, long period, DateTime created,
                             double repetitions = double.PositiveInfinity, bool outputToConsole = true, bool startImmediately = true)
         {
@@ -123,7 +123,7 @@ namespace ProcessMonitor
             this.repetitions = repetitions;
             this.id = ++monitorEventCount; //start IDs at 1 for user convenience
             this.outputToConsole = outputToConsole;
-            if (startImmediately)
+            if (startImmediately && repetitions > 0)
             {
                 start(false);
             }
@@ -133,16 +133,23 @@ namespace ProcessMonitor
         /// Starts the MonitorEvent, or throws InvalidOperationException if already started.
         /// </summary>
         /// <param name="outputToConsole">If true, outputs message to console saying which MonitorEvent was started.</param>
-        public void start(bool outputToConsole)
+        /// <returns>true if started successfully, false if repetitions == 0.</returns>
+        public bool start(bool outputToConsole)
         {
             if (timer != null)
             {
                 throw new System.InvalidOperationException("Attempted to start already active MonitorEvent #" + id.ToString() + " '" + name + "'!");
             }
-            else
+            else if (repetitions > 0)
             {
                 timer = new Timer(timerCallback, eventFunctionParam, dueTime, period);
                 if (outputToConsole) Console.WriteLine("Monitor #" + id + " '" + name + "' started.");
+                return true;
+            }
+            else
+            {
+                if (outputToConsole) Console.WriteLine("Monitor #" + id + " '" + name + "' could not be started; its repetitions are set to " + repetitions.ToString() + ".");
+                return false;
             }
         }
 
@@ -209,6 +216,10 @@ namespace ProcessMonitor
         {
             this.repetitions = newRepetitions;
             if (outputToConsole) Console.WriteLine("Monitor #" + id + " '" + name + "' repetitions changed to " + newRepetitions.ToString() + ".");
+            if (this.repetitions == 0 && running())
+            {
+                stop(outputToConsole);
+            }
         }
         
         /// <summary>

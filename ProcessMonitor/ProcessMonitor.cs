@@ -212,15 +212,17 @@ namespace ProcessMonitor
             {
                 if (!monitorEvent.running())
                 {
-                    monitorEvent.start(outputToConsole);
-                    numStarted++;
+                    if (monitorEvent.start(outputToConsole)) //started successfully if true
+                    {
+                        numStarted++;
+                    }
                 }
             }
             if (outputToConsole)
             {
                 if (numStarted == 0)
                 {
-                    Console.WriteLine("No monitors were started; all " + monitorEventList.Count.ToString() + " are currently running.");
+                    Console.WriteLine("No monitors were started; all " + monitorEventList.Count.ToString() + " are currently running or could not be started.");
                 }
                 else
                 {

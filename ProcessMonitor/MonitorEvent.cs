@@ -17,8 +17,6 @@ namespace ProcessMonitor
     class MonitorEvent
     {
         public readonly string name;
-        public readonly long dueTime;
-        public readonly long period;
         public readonly int id; //unique ID for this MonitorEvent
         public readonly bool outputToConsole;
         public readonly DateTime created; //date and time this MonitorEvent was created
@@ -26,6 +24,8 @@ namespace ProcessMonitor
         protected Timer timer;
         protected TimerCallback eventFunction;
         protected object eventFunctionParam;
+        protected long dueTime;
+        protected long period;
         protected double repetitions;
 
         protected static int monitorEventCount = 0; //number of created MonitorEvents
@@ -55,28 +55,46 @@ namespace ProcessMonitor
             return false;
         }
 
+        /// <summary>
+        /// Gets a MonitorEvent from a list by id.
+        /// </summary>
+        /// <param name="monitorEventList">LinkedList of MonitorEvents to search in.</param>
+        /// <param name="monitorEventID">id of MonitorEvent to find in monitorEventList.</param>
+        /// <returns>MonitorEvent with id monitorEventID, or null if not found.</returns>
+        public static MonitorEvent getMonitorEventByID(LinkedList<MonitorEvent> monitorEventList, int monitorEventID)
+        {
+            MonitorEvent found = null;
+            foreach (MonitorEvent monitorEvent in monitorEventList)
+            {
+                if (monitorEvent.id == monitorEventID)
+                {
+                    return monitorEvent;
+                }
+            }
+            return found;
+        }
+
         public static void displayMonitorEvents(LinkedList<MonitorEvent> monitorEventList)
         {
             int activeCount = 0;
             Console.WriteLine("Monitors:");
-            if (monitorEventCount > 0)
+            if (monitorEventList.Count > 0)
             {
-                Console.WriteLine("# | running | name descriptor | interval (ms) | repetitions | created");
-                Console.WriteLine("---------------------------------------------------------------------");
+                Console.WriteLine("# | running | name descriptor | interval (ms) | repetitions | console output | created");
+                Console.WriteLine("--------------------------------------------------------------------------------------");
                 foreach (MonitorEvent m in monitorEventList)
                 {
                     bool isRunning = m.running();
-                    Console.WriteLine(m.id.ToString() + " | " + isRunning.ToString() + " | " + m.name + " | "
-                                    + m.period.ToString() + " | " + m.repetitions.ToString() + " | " + m.created.ToString());
+                    Console.WriteLine(m.id.ToString() + " | " + isRunning.ToString() + " | " + m.name + " | " + m.period.ToString() + " | "
+                                    + m.repetitions.ToString() + " | " + m.outputToConsole.ToString() + " | " + m.created.ToString());
                     if (isRunning)
                     {
                         activeCount++;
                     }
                 }
-                Console.WriteLine("---------------------------------------------------------------------");
+                Console.WriteLine("--------------------------------------------------------------------------------------");
             }
-            int inactiveCount = monitorEventCount - activeCount;
-            //Console.WriteLine(monitorEventCount.ToString() + " monitors :");
+            int inactiveCount = monitorEventList.Count - activeCount;
             Console.WriteLine(activeCount.ToString() + " running, " + inactiveCount.ToString() + " stopped.");
         }
 
@@ -103,18 +121,19 @@ namespace ProcessMonitor
             this.period = period;
             this.created = created;
             this.repetitions = repetitions;
-            this.id = monitorEventCount++;
+            this.id = ++monitorEventCount; //start IDs at 1 for user convenience
             this.outputToConsole = outputToConsole;
             if (startImmediately)
             {
-                start();
+                start(false);
             }
         }
 
         /// <summary>
         /// Starts the MonitorEvent, or throws InvalidOperationException if already started.
         /// </summary>
-        public void start()
+        /// <param name="outputToConsole">If true, outputs message to console saying which MonitorEvent was started.</param>
+        public void start(bool outputToConsole)
         {
             if (timer != null)
             {
@@ -123,6 +142,7 @@ namespace ProcessMonitor
             else
             {
                 timer = new Timer(timerCallback, eventFunctionParam, dueTime, period);
+                if (outputToConsole) Console.WriteLine("Monitor #" + id + " '" + name + "' started.");
             }
         }
 
@@ -130,12 +150,28 @@ namespace ProcessMonitor
         /// Stops the MonitorEvent.
         /// </summary>
         /// <param name="outputToConsole">If true, outputs message to console saying which MonitorEvent was stopped.</param>
-        public void stop(bool outputToConsole = true)
+        public void stop(bool outputToConsole)
         {
             timer.Dispose();
             timer = null;
             if (outputToConsole) Console.WriteLine("Monitor #" + id + " '" + name + "' stopped.");
             //TODO: prompt to save log?
+        }
+
+        /// <summary>
+        /// Toggles the MonitorEvent (starts if stopped, or stops if running).
+        /// </summary>
+        /// <param name="outputToConsole">If true, outputs message to console.</param>
+        public void toggle(bool outputToConsole)
+        {
+            if (running())
+            {
+                stop(outputToConsole);
+            }
+            else
+            {
+                start(outputToConsole);
+            }
         }
 
         /// <summary>
@@ -147,11 +183,38 @@ namespace ProcessMonitor
             return (timer != null);
         }
 
-        public void changeInterval(long newDueTime, long newPeriod)
+        /// <summary>
+        /// Change the interval for this MonitorEvent.
+        /// </summary>
+        /// <param name="newDueTime">New amount of time before the MonitorEvent performs its first repetition.</param>
+        /// <param name="newPeriod">New amount of time in between 1st and 2nd repetition, and so on.</param>
+        /// <param name="outputToConsole">If true, output info to console.</param>
+        public void changeInterval(long newDueTime, long newPeriod, bool outputToConsole)
         {
-            timer.Change(newDueTime, newPeriod);
+            if (running())
+            {
+                timer.Change(newDueTime, newPeriod);
+            }
+            this.dueTime = newDueTime;
+            this.period = newPeriod;
+            if (outputToConsole) Console.WriteLine("Monitor #" + id + " '" + name + "' interval changed to " + newPeriod.ToString() + "ms.");
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="newRepetitions"></param>
+        /// <param name="?"></param>
+        public void changeRepetitions(double newRepetitions, bool outputToConsole)
+        {
+            this.repetitions = newRepetitions;
+            if (outputToConsole) Console.WriteLine("Monitor #" + id + " '" + name + "' repetitions changed to " + newRepetitions.ToString() + ".");
         }
         
+        /// <summary>
+        /// Calls the specified eventFunction and does book-keeping and possibly outputs info to console.
+        /// </summary>
+        /// <param name="eventFunctionParam">Object parameter to pass to eventFunction.</param>
         protected void timerCallback(Object eventFunctionParam)
         {
             if (!Double.IsPositiveInfinity(repetitions))

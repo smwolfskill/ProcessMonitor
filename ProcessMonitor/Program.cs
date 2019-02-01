@@ -28,7 +28,7 @@ namespace ProcessMonitor
 
         static void Main(string[] args)
         {
-            Console.WriteLine("PROCESS MONITOR V2.0"
+            Console.WriteLine("PROCESS MONITOR V2.1"
                     + Environment.NewLine + "Press CTRL+C to force exit at any time (however, settings won't be saved)."
                     + Environment.NewLine + "--------------------------------------------------------------------------");
             //Load settings
@@ -103,6 +103,14 @@ namespace ProcessMonitor
                             + "   ki rm [name]\tRemove a process from the kill list." + Environment.NewLine
                             + "   monitor [interval] [repetitions] [console output (true/false)] [command with or without args]\tExecute a command continuously every interval for repetitions (inf for continuous), e.g. 'monitor 00:01:00 inf true killall'" + Environment.NewLine
                             + "   monitors\tList all running monitors." + Environment.NewLine
+                            + "   monitors [id #] start\tStart a monitor with specified id #. " + Environment.NewLine
+                            + "   monitors [id #] stop\tStop a monitor with specified id #." + Environment.NewLine
+                            + "   monitors [id #] toggle\tToggle a monitor's state (starts if stopped, and stops if running)." + Environment.NewLine
+                            + "   monitors [id #] interval [new interval]\tChange a monitor's interval to a new interval." + Environment.NewLine
+                            + "   monitors [id #] repetitions [new repetitions]\tChange a monitor's repetitions remaining to a new amount.\t" + Environment.NewLine
+                            + "   monitors [id #] rm\tPermanently remove a monitor, and stops it if running." + Environment.NewLine
+                            + "   monitors startall\tStarts all stopped monitors." + Environment.NewLine
+                            + "   monitors stopall\tStops all running monitors." + Environment.NewLine
                             + "   settings\tList the location on disk where settings are stored." + Environment.NewLine
                             + "   startup (true/false)\tWith no arguments, lists whether it is true that this program will launch on startup. Args set the value.");
                     }
@@ -157,14 +165,14 @@ namespace ProcessMonitor
                     if (input.First.Next != null) return false;
                     if (execute)
                     {
-                        ProcessMonitor.killall(settings.getSetting(header_kill));
+                        ProcessMonitor.killall(settings.getSetting(header_kill), outputToConsole);
                     }
                     break;
                 case "kill":
                     if (input.First.Next == null) return false;
                     if(execute)
                     {
-                        ProcessMonitor.killProcess(input.First.Next.Value);
+                        ProcessMonitor.killProcess(input.First.Next.Value, outputToConsole);
                     }
                     break;
                 case "killpid":
@@ -177,7 +185,7 @@ namespace ProcessMonitor
                     {
                         return false;
                     }
-                    if(execute) ProcessMonitor.killProcess(pid);
+                    if(execute) ProcessMonitor.killProcess(pid, outputToConsole);
                     break;
                 case "ki":
                     if (input.First.Next == null) //mode 1: Display kill list
@@ -227,6 +235,7 @@ namespace ProcessMonitor
                         else
                         {
                             int reps = int.Parse(input.First.Next.Next.Value);
+                            if (reps < 0) return false;
                             arg_repetitions = (double) reps;
                         }
                     }
@@ -271,9 +280,95 @@ namespace ProcessMonitor
                     {
                         if (outputToConsole) MonitorEvent.displayMonitorEvents(monitorEventList);
                     }
+                    else if(input.First.Next.Value == "startall")
+                    {
+                        if (execute)
+                        {
+                            ProcessMonitor.monitorEvent_startall(monitorEventList, outputToConsole);
+                        }
+                    }
+                    else if (input.First.Next.Value == "stopall")
+                    {
+                        if (execute)
+                        {
+                            ProcessMonitor.monitorEvent_stopall(monitorEventList, outputToConsole);
+                        }
+                    }
                     else
                     {
-                        //TODO
+                        try
+                        {
+                            int monitorID = int.Parse(input.First.Next.Value);
+                            MonitorEvent found = MonitorEvent.getMonitorEventByID(monitorEventList, monitorID);
+                            if (found == null)
+                            {
+                                if (outputToConsole) Console.WriteLine("No monitor with id #" + monitorID.ToString() + " was found.");
+                                return false;
+                            }
+                            switch(input.First.Next.Next.Value) 
+                            {
+                                case "start":
+                                    if (!found.running())
+                                    {
+                                        if (execute) found.start(outputToConsole);
+                                    }
+                                    else
+                                    {
+                                        if (outputToConsole) Console.WriteLine("Monitor #" + found.id + " '" + found.name + "' is already running.");
+                                    }
+                                    break;
+                                case "stop":
+                                    if (found.running())
+                                    {
+                                        if (execute) found.stop(outputToConsole);
+                                    }
+                                    else
+                                    {
+                                        if (outputToConsole) Console.WriteLine("Monitor #" + found.id + " '" + found.name + "' is already stopped.");
+                                    }
+                                    break;
+                                case "toggle":
+                                    if (execute)
+                                    {
+                                        found.toggle(outputToConsole);
+                                    }
+                                    break;
+                                case "interval":
+                                    Console.WriteLine("interval: attempting to parse '" + input.First.Next.Next.Next.Value + "'...");
+                                    long newInterval = parseInterval(input.First.Next.Next.Next.Value);
+                                    if (execute)
+                                    {
+                                        found.changeInterval(newInterval, newInterval, outputToConsole);
+                                    }
+                                    break;
+                                case "repetitions":
+                                    double newRepetitions;
+                                    if (input.First.Next.Next.Next.Value == "inf")
+                                    {
+                                        newRepetitions = double.PositiveInfinity;
+                                    }
+                                    int repsParsed = int.Parse(input.First.Next.Next.Next.Value);
+                                    if (repsParsed < 0) return false;
+                                    newRepetitions = (double) repsParsed;
+                                    if (execute)
+                                    {
+                                        found.changeRepetitions(newRepetitions, outputToConsole);
+                                    }
+                                    break;
+                                case "rm":
+                                    if (execute)
+                                    {
+                                        ProcessMonitor.monitorEvent_rm(monitorEventList, monitorID, outputToConsole);
+                                    }
+                                    break;
+                                default: 
+                                    return false;
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            return false;
+                        }
                     }
                     break;
                 case "settings":

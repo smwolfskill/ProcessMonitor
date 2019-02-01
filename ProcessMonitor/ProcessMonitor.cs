@@ -78,21 +78,23 @@ namespace ProcessMonitor
         }
 
         /// <summary>
-        /// Kill a process, if running. Output log to console.
+        /// Kill a process, if running.
         /// </summary>
-        /// <param name="processName"></param>
-        public static void killProcess(String processName, bool showLog = true)
+        /// <param name="processName">Name of the running process to kill.</param>
+        /// <param name="outputToConsole">If true, outputs info to console.</param>
+        public static void killProcess(String processName, bool outputToConsole)
         {
             LinkedList<string> killList = new LinkedList<string>();
             killList.AddFirst(processName);
-            killall(killList, showLog);
+            killall(killList, outputToConsole);
         }
 
         /// <summary>
         /// Kill a process by specified PID, if running. Output log to console.
         /// </summary>
         /// <param name="pid">Process PID to kill.</param>
-        public static void killProcess(int pid, bool showLog = true)
+        /// <param name="outputToConsole">If true, outputs info to console.</param>
+        public static void killProcess(int pid, bool outputToConsole)
         {
             //1. Check that process w/ pid exists
             Process proc = null;
@@ -102,7 +104,7 @@ namespace ProcessMonitor
             }
             catch (Exception e)
             {
-                if (showLog) Console.WriteLine("No process with pid " + pid.ToString() + " found.");
+                if (outputToConsole) Console.WriteLine("No process with pid " + pid.ToString() + " found.");
                 return;
             }
             //2. Kill
@@ -110,11 +112,11 @@ namespace ProcessMonitor
             try
             {
                 proc.Kill();
-                if (showLog) Console.WriteLine("Terminated process successfully.");
+                if (outputToConsole) Console.WriteLine("Terminated process successfully.");
             }
             catch (Exception e)
             {
-                if (showLog) Console.WriteLine("FAILURE:" + Environment.NewLine + "\t" + e.Message.ToString());
+                if (outputToConsole) Console.WriteLine("FAILURE:" + Environment.NewLine + "\t" + e.Message.ToString());
             }
         }
 
@@ -122,7 +124,8 @@ namespace ProcessMonitor
         /// Kill all running processes on a kill list. Output log to console.
         /// </summary>
         /// <param name="killList">Linked List of process names on the kill list.</param>
-        public static void killall(LinkedList<string> killList, bool showLog = true)
+        /// <param name="outputToConsole">If true, outputs info about processes killed to console.</param>
+        public static void killall(LinkedList<string> killList, bool outputToConsole)
         {
             bool exists = false;
             short numTerminated = 0;
@@ -134,7 +137,7 @@ namespace ProcessMonitor
                     Process[] proc = Process.GetProcessesByName(killListElement.Value);
                     if (proc.Length > 0)
                     {
-                        if (showLog)
+                        if (outputToConsole)
                         {
                             if (!exists)
                             {
@@ -154,15 +157,110 @@ namespace ProcessMonitor
             }
             catch (Exception e)
             {
-                if (showLog) Console.WriteLine("FAILURE:" + Environment.NewLine + "\t" + e.Message.ToString());
+                if (outputToConsole) Console.WriteLine("FAILURE:" + Environment.NewLine + "\t" + e.Message.ToString());
             }
-            if (showLog)
+            if (outputToConsole)
             {
                 if (exists) Console.WriteLine("Terminated " + numTerminated.ToString() + " process(es) successfully.");
                 else Console.WriteLine("Nothing to kill: no processes specified were running.");
             }
         }
 
+        /// <summary>
+        /// Remove a MonitorEvent from a list by id, stopping it first if running.
+        /// </summary>
+        /// <param name="monitorEventList">LinkedList of MonitorEvents to look in.</param>
+        /// <param name="monitorEventID">ID of MonitorEvent to search for in monitorEventList.</param>
+        /// <param name="outputToConsole">If true, output info to console.</param>
+        public static void monitorEvent_rm(LinkedList<MonitorEvent> monitorEventList, int monitorEventID, bool outputToConsole)
+        {
+            if (monitorEventList.Count == 0)
+            {
+                if (outputToConsole) Console.WriteLine("Cannot remove monitor; no monitors have been created yet.");
+                return;
+            }
+            foreach (MonitorEvent monitorEvent in monitorEventList)
+            {
+                if (monitorEvent.id == monitorEventID)
+                {
+                    if (monitorEvent.running())
+                    {
+                        monitorEvent.stop(outputToConsole);
+                    }
+                    monitorEventList.Remove(monitorEvent);
+                    if (outputToConsole) Console.WriteLine("Monitor #" + monitorEvent.id + " '" + monitorEvent.name + "' removed from monitors successfully.");
+                    return;
+                }
+            }
+            if (outputToConsole) Console.WriteLine("No monitor with id #" + monitorEventID.ToString() + " was found.");
+        }
 
+        /// <summary>
+        /// Start all stoppped MonitorEvents in a list, if any.
+        /// </summary>
+        /// <param name="monitorEventList">LinkedList of MonitorEvents.</param>
+        /// <param name="outputToConsole">If true, output info to console.</param>
+        public static void monitorEvent_startall(LinkedList<MonitorEvent> monitorEventList, bool outputToConsole)
+        {
+            if (monitorEventList.Count == 0)
+            {
+                if (outputToConsole) Console.WriteLine("Cannot start monitors; no monitors have been created yet.");
+                return;
+            }
+            int numStarted = 0;
+            foreach (MonitorEvent monitorEvent in monitorEventList)
+            {
+                if (!monitorEvent.running())
+                {
+                    monitorEvent.start(outputToConsole);
+                    numStarted++;
+                }
+            }
+            if (outputToConsole)
+            {
+                if (numStarted == 0)
+                {
+                    Console.WriteLine("No monitors were started; all " + monitorEventList.Count.ToString() + " are currently running.");
+                }
+                else
+                {
+                    Console.WriteLine(numStarted.ToString() + " monitor(s) started.");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Stop all running MonitorEvents in a list, if any.
+        /// </summary>
+        /// <param name="monitorEventList">LinkedList of MonitorEvents.</param>
+        /// <param name="outputToConsole">If true, output info to console.</param>
+        public static void monitorEvent_stopall(LinkedList<MonitorEvent> monitorEventList, bool outputToConsole)
+        {
+            if (monitorEventList.Count == 0)
+            {
+                if (outputToConsole) Console.WriteLine("Cannot stop monitors; no monitors have been created yet.");
+                return;
+            }
+            int numStopped = 0;
+            foreach (MonitorEvent monitorEvent in monitorEventList)
+            {
+                if (monitorEvent.running())
+                {
+                    monitorEvent.stop(outputToConsole);
+                    numStopped++;
+                }
+            }
+            if (outputToConsole)
+            {
+                if (numStopped == 0)
+                {
+                    Console.WriteLine("No monitors were stopped; all " + monitorEventList.Count.ToString() + " are currently stopped.");
+                }
+                else
+                {
+                    Console.WriteLine(numStopped.ToString() + " monitor(s) stopped.");
+                }
+            }
+        }
     }
 }

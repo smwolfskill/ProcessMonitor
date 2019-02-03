@@ -21,6 +21,7 @@ namespace ProcessMonitor
         public readonly string SETTINGS_NAME; //filename of the stored settings file (default "settings.txt")
         public readonly string SETTINGS_PATH; //full path of stored settings file (SETTINGS_FOLDER/SETTINGS_NAME)
         public readonly string[] settingHeaders;
+
         public LinkedList<string>[] settings; //each setting will have an information list
 
         public Settings(string[] settingHeaders, string settingsFolder, string settingsFilename = "settings.txt")

@@ -334,7 +334,6 @@ namespace ProcessMonitor
                                     }
                                     break;
                                 case "interval":
-                                    Console.WriteLine("interval: attempting to parse '" + input.First.Next.Next.Next.Value + "'...");
                                     long newInterval = parseInterval(input.First.Next.Next.Next.Value);
                                     if (execute)
                                     {

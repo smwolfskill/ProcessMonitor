@@ -14,6 +14,9 @@ Release/
 *.log
 TestResult.xml
 *.VisualState.xml
+*.xcf
+*.png
+Icon2.ico
 Version.cs
 Version.h
 Version.cpp

@@ -10,7 +10,7 @@ namespace ProcessMonitor
     /**
      * Author      Scott Wolfskill
      * Created     01/30/2017
-     * Last edit   01/30/2019
+     * Last edit   01/31/2019
      * 
      * Stores, loads and saves settings information for an application. A single setting is a LinkedList<string>.
      */
@@ -21,6 +21,7 @@ namespace ProcessMonitor
         public readonly string SETTINGS_NAME; //filename of the stored settings file (default "settings.txt")
         public readonly string SETTINGS_PATH; //full path of stored settings file (SETTINGS_FOLDER/SETTINGS_NAME)
         public readonly string[] settingHeaders;
+
         public LinkedList<string>[] settings; //each setting will have an information list
 
         public Settings(string[] settingHeaders, string settingsFolder, string settingsFilename = "settings.txt")
@@ -124,7 +125,7 @@ namespace ProcessMonitor
         /// <param name="settingName">Descriptive name of the setting to output to console.</param>
         /// <param name="partialMatch">If true, fetches the setting if specified settingHeader is contained within its header.</param>
         /// <returns>-2 if reserved word, -1 if invalid information, 0 if success, 1 if already present (no action needed)</returns>
-        public int addToSetting(string settingHeader, string value, string settingName, bool partialMatch = false)
+        public int addToSetting(string settingHeader, string value, string settingName, bool outputToConsole, bool execute, bool partialMatch = false)
         {
             //1. Check for invalid value
             if (value == null || value == "") return -1;
@@ -132,7 +133,7 @@ namespace ProcessMonitor
             int header = contained(value, settingHeaders);
             if (header >= 0)
             {
-                Console.WriteLine(settingHeaders[header] + " is a reserved keyword and cannot be a process name.");
+                if(outputToConsole) Console.WriteLine(settingHeaders[header] + " is a reserved keyword and cannot be a process name.");
                 return -2;
             }
             //3. Check if already in list
@@ -142,14 +143,17 @@ namespace ProcessMonitor
             {
                 if (settingElement.Value == value) //already present; no action needed.
                 {
-                    Console.WriteLine("Process '" + value + "' is already in the " + settingName + ".");
+                    if(outputToConsole) Console.WriteLine("Process '" + value + "' is already in the " + settingName + ".");
                     return 1;
                 }
                 settingElement = settingElement.Next;
             }
             //4. Not already in list, so add:
-            setting.AddLast(value);
-            Console.WriteLine("Added process '" + value + "' to the " + settingName + ".");
+            if (execute)
+            {
+                setting.AddLast(value);
+                if (outputToConsole) Console.WriteLine("Added process '" + value + "' to the " + settingName + ".");
+            }
             return 0;
         }
 
@@ -161,7 +165,7 @@ namespace ProcessMonitor
         /// <param name="settingName">Descriptive name of the setting to output to console.</param>
         /// <param name="partialMatch">If true, fetches the setting if specified settingHeader is contained within its header.</param>
         /// <returns>-1 if invalid information, 0 if success, 1 if not found (no action needed)</returns>
-        public int removeFromSetting(string settingHeader, string value, string settingName, bool partialMatch = false)
+        public int removeFromSetting(string settingHeader, string value, string settingName, bool outputToConsole, bool execute, bool partialMatch = false)
         {
             //1. Check for invalid value
             if (value == null || value == "") return -1;
@@ -180,12 +184,15 @@ namespace ProcessMonitor
             }
             if (!present)
             {
-                Console.WriteLine("Process '" + value + "' not found in " + settingName + ".");
+                if(outputToConsole) Console.WriteLine("Process '" + value + "' not found in " + settingName + ".");
                 return 1;
             }
             //3. In list, so remove:
-            setting.Remove(settingElement);
-            Console.WriteLine("Removed process '" + value + "' from the " + settingName + ".");
+            if (execute)
+            {
+                setting.Remove(settingElement);
+                if (outputToConsole) Console.WriteLine("Removed process '" + value + "' from the " + settingName + ".");
+            }
             return 0;
         }
 
